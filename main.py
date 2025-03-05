@@ -1,32 +1,38 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
-import subprocess
+import sys
+import io
 
 app = FastAPI()
 
 class CodeRequest(BaseModel):
     script: str
+    stdin: str
 
 @app.post("/execute")
 def execute_code(request: CodeRequest):
+    # Split user inputs into a list
+    user_inputs = request.stdin.split("\n")
+
+    # Detect numbers and convert them
+    for i in range(len(user_inputs)):
+        if user_inputs[i].replace(".", "", 1).isdigit():
+            user_inputs[i] = eval(user_inputs[i])  # Convert automatically to int or float
+
+    # Replace input() calls with user-provided values
+    script = request.script
+    for value in user_inputs:
+        script = script.replace("input()", str(value), 1)
+
+    # Capture output
+    old_stdout = sys.stdout
+    sys.stdout = io.StringIO()
     try:
-        # Run the Python script as a subprocess and allow it to handle `input()`
-        process = subprocess.Popen(
-            ["python3", "-c", request.script],  # Run as inline Python script
-            text=True,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-
-        # Capture output and errors
-        stdout, stderr = process.communicate()
-
-        return {
-            "output": stdout,
-            "error": stderr,
-            "statusCode": process.returncode
-        }
-
+        exec(script)
+        output = sys.stdout.getvalue()
     except Exception as e:
-        return {"error": str(e), "statusCode": 1}
+        output = f"Error: {str(e)}"
+    sys.stdout = old_stdout
+
+    return {"output": output}
+
