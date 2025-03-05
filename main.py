@@ -1,28 +1,17 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-import subprocess
+from flask import Flask, request, jsonify
 
-app = FastAPI()
+app = Flask(__name__)
 
-class CodeRequest(BaseModel):
-    script: str
-    stdin: str = ""
+@app.route("/execute", methods=["POST"])
+def execute():
+    # Simulating a response that might have been in bytes
+    byte_data = b"Hello World"  # Example bytes response
 
-@app.post("/execute")
-async def execute_code(request: CodeRequest):
-    try:
-        # Run Python script with input
-        process = subprocess.run(
-            ["python", "-c", request.script],
-            input=request.stdin.encode(),
-            capture_output=True,
-            text=True
-        )
+    # ✅ FIX: Decode bytes before sending the response
+    fixed_data = byte_data.decode("utf-8")  # Convert bytes to string
 
-        return {
-            "output": process.stdout if process.returncode == 0 else process.stderr,
-            "statusCode": process.returncode
-        }
+    # ✅ Ensure the response is always a string
+    return jsonify({"message": fixed_data})
 
-    except Exception as e:
-        return {"output": str(e), "statusCode": 1}
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)
