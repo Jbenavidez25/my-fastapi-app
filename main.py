@@ -11,7 +11,6 @@ class CodeRequest(BaseModel):
 @app.post("/execute")
 async def execute_code(request: CodeRequest):
     try:
-        # Run Python script with input handling
         process = subprocess.Popen(
             ["python", "-c", request.script],
             stdin=subprocess.PIPE,
@@ -20,7 +19,6 @@ async def execute_code(request: CodeRequest):
             text=True
         )
 
-        # Send user input to the script
         stdout, stderr = process.communicate(input=request.stdin)
 
         return {
