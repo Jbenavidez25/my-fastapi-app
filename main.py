@@ -11,18 +11,15 @@ class CodeRequest(BaseModel):
 @app.post("/execute")
 async def execute_code(request: CodeRequest):
     try:
-        process = subprocess.Popen(
+        process = subprocess.run(
             ["python", "-c", request.script],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            input=request.stdin.encode(),
+            capture_output=True,
             text=True
         )
 
-        stdout, stderr = process.communicate(input=request.stdin)
-
         return {
-            "output": stdout if process.returncode == 0 else stderr,
+            "output": process.stdout if process.returncode == 0 else process.stderr,
             "statusCode": process.returncode
         }
 
