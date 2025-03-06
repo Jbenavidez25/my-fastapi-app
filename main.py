@@ -11,35 +11,20 @@ class CodeRequest(BaseModel):
 @app.post("/execute")
 async def execute_code(request: CodeRequest):
     try:
-        # Print debugging info
-        print(f"Received script: {request.script}")
-        print(f"Received stdin: {request.stdin}")
-        print(f"Type of stdin: {type(request.stdin)}")  # Check if it's already bytes
-        
-        # Ensure stdin is a string before encoding
-        if isinstance(request.stdin, bytes):
-            stdin_input = request.stdin.decode("utf-8")  # Convert bytes to string if needed
-        else:
-            stdin_input = request.stdin
-
-        print(f"Processed stdin: {stdin_input}")
-
-        # Run Python script with input
-        process = subprocess.run(
+        # Run Python script with input handling
+        process = subprocess.Popen(
             ["python", "-c", request.script],
-            input=stdin_input.encode("utf-8"),  # Convert to bytes correctly
-            capture_output=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True
         )
 
-        # ✅ FIX: Ensure output is always a string
-        output = process.stdout if process.returncode == 0 else process.stderr
-
-        print(f"Raw output type: {type(output)}")
-        print(f"Raw output: {output}")
+        # Send user input to the script
+        stdout, stderr = process.communicate(input=request.stdin)
 
         return {
-            "output": output,
+            "output": stdout if process.returncode == 0 else stderr,
             "statusCode": process.returncode
         }
 
