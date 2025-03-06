@@ -6,22 +6,17 @@ app = FastAPI()
 
 class CodeRequest(BaseModel):
     script: str
-    stdin: str = ""
+    stdin: str  # New: Accept multiple lines of input
 
 @app.post("/execute")
 async def execute_code(request: CodeRequest):
     try:
-        process = subprocess.run(
-            ["python", "-c", request.script],
-            input=request.stdin.encode(),
-            capture_output=True,
-            text=True
+        # Run the script and pass input dynamically
+        result = subprocess.run(
+            ["python", "-c", request.script], 
+            input=request.stdin, text=True, 
+            capture_output=True, timeout=5
         )
-
-        return {
-            "output": process.stdout if process.returncode == 0 else process.stderr,
-            "statusCode": process.returncode
-        }
-
+        return {"output": result.stdout, "error": result.stderr}
     except Exception as e:
-        return {"output": str(e), "statusCode": 1}
+        return {"output": "", "error": str(e)}
