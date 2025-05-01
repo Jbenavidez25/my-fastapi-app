@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 import subprocess
+import re
 
 app = FastAPI()
 
@@ -24,8 +25,15 @@ async def execute_code(request: CodeRequest):
             return {"output": result.stdout, "error": ""}
         else:
             # Error occurred, extract only the error message from stderr
-            error_lines = result.stderr.strip().split('\n')
-            error_message = error_lines[-1]  # The last line is typically the error (e.g., "NameError: name 'x' is not defined")
+            error_output = result.stderr.strip()
+            # Use regex to find the error message (e.g., "NameError: name 'x' is not defined")
+            error_match = re.search(r"(?:Error|Exception): .*$", error_output, re.MULTILINE)
+            if error_match:
+                error_message = error_match.group(0)
+            else:
+                # Fallback: If no error pattern is found, use the last line and attempt to clean it
+                error_lines = error_output.split('\n')
+                error_message = error_lines[-1] if error_lines else "Unknown error occurred"
             return {"output": "", "error": error_message}
     except subprocess.TimeoutExpired:
         return {"output": "", "error": "Execution timed out after 5 seconds"}
