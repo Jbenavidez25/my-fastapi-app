@@ -22,20 +22,49 @@ async def execute_code(request: CodeRequest):
         )
         if result.returncode == 0:
             # Successful execution, return the output
-            return {"output": result.stdout, "error": ""}
+            return {
+                "output": result.stdout,
+                "error": {
+                    "message": "",
+                    "line": -1  # -1 indicates no error
+                }
+            }
         else:
-            # Error occurred, extract only the error message from stderr
+            # Error occurred, parse stderr to extract line number and error message
             error_output = result.stderr.strip()
-            # Use regex to find the error message (e.g., "NameError: name 'x' is not defined")
+            # Look for the line number in the Traceback (e.g., "File "<string>", line 2, in <module>")
+            line_match = re.search(r'File "<string>", line (\d+)', error_output)
+            line_number = int(line_match.group(1)) if line_match else -1
+
+            # Extract the error message (e.g., "NameError: name 'x' is not defined")
             error_match = re.search(r"(?:Error|Exception): .*$", error_output, re.MULTILINE)
             if error_match:
                 error_message = error_match.group(0)
             else:
-                # Fallback: If no error pattern is found, use the last line and attempt to clean it
+                # Fallback: Use the last line if no error pattern is found
                 error_lines = error_output.split('\n')
                 error_message = error_lines[-1] if error_lines else "Unknown error occurred"
-            return {"output": "", "error": error_message}
+
+            return {
+                "output": "",
+                "error": {
+                    "message": error_message,
+                    "line": line_number
+                }
+            }
     except subprocess.TimeoutExpired:
-        return {"output": "", "error": "Execution timed out after 5 seconds"}
+        return {
+            "output": "",
+            "error": {
+                "message": "Execution timed out after 5 seconds",
+                "line": -1
+            }
+        }
     except Exception as e:
-        return {"output": "", "error": str(e)}
+        return {
+            "output": "",
+            "error": {
+                "message": str(e),
+                "line": -1
+            }
+        }
